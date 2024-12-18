@@ -100,7 +100,10 @@ static bool bme280_setup(struct bme280_dev* dev, uint32_t* meas_time_us)
         }
 
         /* Calculate measurement time in microseconds */
-        bme280_cal_meas_delay(meas_time_us, &settings);
+        if (bme280_cal_meas_delay(meas_time_us, &settings) != BME280_OK) {
+            return false;
+        }
+
 
         // Normal Mode will continuously take measurements
         // Forced Mode will take 1 measurement and then go to sleep
@@ -108,6 +111,7 @@ static bool bme280_setup(struct bme280_dev* dev, uint32_t* meas_time_us)
 
         printf("\nHumidity calculation (Data displayed are compensated values)\n");
         printf("Measurement time : %lu us\n\n", (long unsigned int)*meas_time_us);
+        return true;
 }
 double C_to_F(double C)
 {
@@ -181,9 +185,16 @@ void app_main(void)
         static struct bme280_dev dev;
         static uint32_t meas_time_us = 10000; //10ms default, actual value calculated by bme280 API
         const uint32_t idle_meas_time_us = 10000; // no change on idle measurement time for now
-        bool setup_success = bme280_setup(&dev, &meas_time_us);
+        bool setup_BME280_success = bme280_setup(&dev, &meas_time_us);
         ESP_LOGI(TAG, "u8g2_InitDisplay");
         u8g2_InitDisplay(&u8g2); // send init sequence to the display, display is in sleep mode after this,
+        if (!setup_BME280_success){
+            ESP_LOGI(TAG, "Setup BME280 Failed!!");
+            u8g2_ClearBuffer(&u8g2);
+            u8g2_SetFont(&u8g2,u8g2_font_t0_11_mf);
+            u8g2_DrawStr(&u8g2, 1,1,"Setup BME280 Failed!");
+            while(1);
+        }
         while(1)
         {
                 static uint64_t cnt = 0;
